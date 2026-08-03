@@ -38,5 +38,4 @@ const mongoose=require('mongoose');
         type:[string]
     },
 
-
  })
