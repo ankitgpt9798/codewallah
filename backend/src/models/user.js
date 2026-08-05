@@ -6,28 +6,32 @@ const mongoose=require('mongoose');
     firstName:{
         type:String,
         required:true,
-        minLength =3,
-        maxLength=20
+        minLength :3,
+        maxLength:20
     },
     lastName:{
         type:String,
-        minLength=3,
-        maxLength=20
+        minLength:3,
+        maxLength:20
     },
     emailId:{
         type:String,
         required:true,
         unique:true,
-         trim=true,
-         lowercase=true,
-         immutable=true
+         trim:true,
+         lowercase:true,
+         immutable:true
     
     },
     age:{
-        type=Number,
-        minLength=3,
-        maxLength=3
+        type:Number,
+        minLength:3,
+        maxLength:3
 
+    },
+    password:{
+       type:String,
+       required:true
     },
      role:{
         type:String,
@@ -35,7 +39,11 @@ const mongoose=require('mongoose');
         default: 'user'
     },
     problemSolved:{
-        type:[string]
+        type:[String]
     },
 
  })
+
+ const User = mongoose.model("user", userSchema);
+
+ module.exports = User;

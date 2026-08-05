@@ -1,3 +1,4 @@
+const authRouter = require('./routes/userAuth');
 const express = require('express')
 const app = express();
 require('dotenv').config();
@@ -14,6 +15,7 @@ https.globalAgent = new https.Agent({ family: 4 });
 
 app.use(express.json());
 app.use(cookieParser());
+app.use("/user", authRouter);
 
 async function startServer() {
     try {
