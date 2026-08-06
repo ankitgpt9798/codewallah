@@ -75,7 +75,27 @@ const logout = async (req, res) => {
     }
 }
 
+const adminRegister = async (req, res) => {
+    // validate the user
+    try {
+        validate(req.body);
 
+        const { firstName, emailId, password } = req.body;
+
+        const hashedPass = await bcrypt.hash(password, 10);
+
+        const user = await User.create({ firstName, emailId, password: hashedPass });
+
+        const token = jwt.sign({ _id: user._id, emailId: emailId ,role:user.role}, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
+        res.cookie('token', token, { maxAge: 60 * 60 * 1000 });
+
+        res.status(201).send("User Registered Successfully");
+    }
+
+    catch (err) {
+        res.status(400).send(err.message);
+    }
+}
 
 
 module.exports = { register, login,logout,adminRegister };
