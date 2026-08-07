@@ -1,7 +1,8 @@
+require('dotenv').config();
 const authRouter = require('./routes/userAuth');
 const express = require('express')
 const app = express();
-require('dotenv').config();
+
 const main = require('./config/db')
 const cookieParser = require('cookie-parser');
 const redisClient = require('./config/redis');

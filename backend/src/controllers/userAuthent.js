@@ -58,20 +58,20 @@ const login = async (req, res) => {
 }
 
 const logout = async (req, res) => {
-    try{
-       const {tocken}=req.cookies;
-       const ppayload=jwt.decode(tocken);
+    try {
+        const { token } = req.cookies;
+        const payload = jwt.decode(token);
 
-         // tocken ko blocklist me add krna
-        await redisClient.set(`token:${token}`,'Blocked');
-        await redisClient.expireAt(`token:${token}`,payload.exp);
+        // tocken ko blocklist me add krna
+        await redisClient.set(`token:${token}`, 'Blocked');
+        await redisClient.expireAt(`token:${token}`, payload.exp);
 
         // cookies ko expire krna
-        res.cookie("token",null,{expires: new Date(Date.now())});
-    res.send("Logged Out Succesfully");
+        res.cookie("token", null, { expires: new Date(Date.now()) });
+        res.send("Logged Out Succesfully");
     }
-    catch(err){
-        res.status(503).send("Error"+err);
+    catch (err) {
+        res.status(503).send("Error" + err);
     }
 }
 
@@ -86,7 +86,7 @@ const adminRegister = async (req, res) => {
 
         const user = await User.create({ firstName, emailId, password: hashedPass });
 
-        const token = jwt.sign({ _id: user._id, emailId: emailId ,role:user.role}, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
+        const token = jwt.sign({ _id: user._id, emailId: emailId, role: user.role }, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
         res.cookie('token', token, { maxAge: 60 * 60 * 1000 });
 
         res.status(201).send("User Registered Successfully");
@@ -98,4 +98,4 @@ const adminRegister = async (req, res) => {
 }
 
 
-module.exports = { register, login,logout,adminRegister };
+module.exports = { register, login, logout, adminRegister };
