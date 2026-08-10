@@ -6,12 +6,12 @@ const userMiddleware = async (req, res, next) => {
 
     try {
 
-        const { tocken } = req.cookies;
+        const { token } = req.cookies;
 
-        if (!tocken)
+        if (!token)
             throw new Error("tocken is not present")
 
-        const payload = jwt.verify(tocken.process.env.JWT_SECRET_KEY);
+        const payload = jwt.verify(token.process.env.JWT_SECRET_KEY);
 
         const { _id } = payload;
         if (!_id)
