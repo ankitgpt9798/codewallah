@@ -94,4 +94,62 @@ const updateProblem = async (req, res) => {
 
 }
 
-module.exports = {createProblem,updateProblem};
+const deleteProblem= async (req,res)=>{
+    const {id}=req.params;
+    try{
+      if(!id){
+        return res.status(400).send("Id is missing");
+      }
+
+      const deletedProblem=await Problem.findByIdAndDelete(id);
+
+      if(!deletedProblem){
+        return res.status(404).send("problem is missing");
+      }
+      res.status(200).send("Successfully deleted");
+
+    }
+    catch(err){
+res.status(500).send("Error: "+err);
+    }
+}
+
+const getProblemById = async(req,res)=>{
+
+  const {id} = req.params;
+  try{
+     
+    if(!id)
+      return res.status(400).send("ID is Missing");
+
+    const getProblem = await Problem.findById(id);
+
+   if(!getProblem)
+    return res.status(404).send("Problem is Missing");
+
+
+   res.status(200).send(getProblem);
+  }
+  catch(err){
+    res.status(500).send("Error: "+err);
+  }
+}
+const getAllProblem = async(req,res)=>{
+
+  try{
+     
+    const getProblem = await Problem.find({});
+
+   if(getProblem.length==0)
+    return res.status(404).send("Problem is Missing");
+
+
+   res.status(200).send(getProblem);
+  }
+  catch(err){
+    res.status(500).send("Error: "+err);
+  }
+}
+
+
+module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem};
