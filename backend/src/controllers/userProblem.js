@@ -1,30 +1,97 @@
 
-const {getLanguageById,submitBatch} = require("../utils/problemUtility");
+const { getLanguageById, submitBatch, submitToken } = require("../utils/problemUtility");
+const Problem = require('../models/problem');
 
-const createProblem=async(req,res)=>{
-    const {title,description,difficulty,tags,
-        visibleTestCases,hiddenTestCases,startCode,
+const createProblem = async (req, res) => {
+    const { title, description, difficulty, tags,
+        visibleTestCases, hiddenTestCases, startCode,
         referenceSolution, problemCreator
     } = req.body;
 
-    try{
-        
-        for(const{language,completeCode} of referenceSolution){
+    try {
 
-            const LanguageId =getLanguageById(language);
+        for (const { language, completeCode } of referenceSolution) {
 
-            const submissions = visibleTestCases.map((input,output)=>({
-            source_code:completeCode,
-            language_id: languageId,
-            stdin: input,
-            expected_output: output
-        }));
-        const submitResult = await submitBatch(submissions);
+            const languageId = getLanguageById(language);
+
+            const submissions = visibleTestCases.map((input, output) => ({
+                source_code: completeCode,
+                language_id: languageId,
+                stdin: input,
+                expected_output: output
+            }));
+            const submitResult = await submitBatch(submissions);
+
+            const resultToken = submitResult.map((value) => value.token);
+
+            const testResult = await submitToken(resultToken);
+
+            for (const test of testResult) {
+                if (test.status_id != 3) {
+                    return res.status(400).send("Error occured");
+                }
+            }
 
         }
+        // We can store it in our DB
+        const userProblem = await Problem.create({
+            ...req.body,
+            problemCreator: req.result._id
+        });
+
+        res.status(201).send("Problem Saved Successfully");
 
     }
-    catch(err){
-
+    catch (err) {
+        res.status(400).send("Error: " + err);
     }
 }
+
+const updateProblem = async (req, res) => {
+    const { id } = req.params;
+    const { title, description, difficulty, tags,
+        visibleTestCases, hiddenTestCases, startCode,
+        referenceSolution, problemCreator
+    } = req.body;
+
+    try {
+        if (!id) {
+            return res.status(400).send("Missing Id Field");
+        }
+        const DsaProblem = await Problem.findById(id);
+        if (!DsaProblem) {
+            return res.status(404).send("Id is not present in server");
+        }
+
+        for (const { language, completeCode } of referenceSolution) {
+
+            const languageId = await getLanguageById(language);
+
+            const submission = visibleTestCases.map((testcase) => ({
+                source_code: completeCode,
+                language_id: languageId,
+                stdin: testcase.input,
+                expected_output: testcase.output
+
+            }))
+
+            const submitResult = await submitBatch(submission);
+            const resultToken = submitResult.map((value) => value.token);
+            const testResult = await submitToken(resultToken);
+            for (const test of testResult) {
+                if (test.status_id != 3) {
+                    return res.status(400).send("Error Occured");
+                }
+            }
+        }
+        const newProblem = await Problem.findByIdAndUpdate(id, { ...req.body }, { runValidators: true, new: true });
+
+        res.status(200).send(newProblem);
+    }
+    catch (err) {
+        res.status(500).send("Error: " + err);
+    }
+
+}
+
+module.exports = {createProblem,updateProblem};
