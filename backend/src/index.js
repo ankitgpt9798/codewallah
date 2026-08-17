@@ -3,6 +3,7 @@ const express = require('express')
 const cookieParser = require('cookie-parser');
 const authRouter = require('./routes/userAuth');
 const problemRouter = require("./routes/problemCreator");
+const submitRouter=require('../src/routes/submit')
 
 const main = require('./config/db')
 const redisClient = require('./config/redis');
