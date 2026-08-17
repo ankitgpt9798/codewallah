@@ -1,14 +1,19 @@
 require('dotenv').config();
-const authRouter = require('./routes/userAuth');
 const express = require('express')
-const app = express();
+const cookieParser = require('cookie-parser');
+const authRouter = require('./routes/userAuth');
+const problemRouter = require("./routes/problemCreator");
 
 const main = require('./config/db')
-const cookieParser = require('cookie-parser');
 const redisClient = require('./config/redis');
+
 const http = require('http');
 const https = require('https');
 const dns = require('dns');
+
+
+
+const app = express();
 
 // Force IPv4 + Google DNS
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -18,6 +23,8 @@ https.globalAgent = new https.Agent({ family: 4 });
 app.use(express.json());
 app.use(cookieParser());
 app.use("/user", authRouter);
+app.use('/problem',problemRouter);
+app.use('/submit',submitRouter);
 
 const InitalizeConnection = async () => {
     try {
