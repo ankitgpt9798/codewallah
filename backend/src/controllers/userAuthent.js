@@ -97,6 +97,23 @@ const adminRegister = async (req, res) => {
     }
 }
 
+const deleteProfile = async(req,res)=>{
+  
+    try{
+       const userId = req.result._id;
+      
+    // userSchema delete
+    await User.findByIdAndDelete(userId);
+    
+    res.status(200).send("Deleted Successfully");
+
+    }
+    catch(err){
+      
+        res.status(500).send("Internal Server Error");
+    }
+}
 
 
-module.exports = { register, login, logout, adminRegister };
+
+module.exports = { register, login, logout, adminRegister ,deleteProfile};
