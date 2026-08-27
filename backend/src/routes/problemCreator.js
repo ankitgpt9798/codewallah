@@ -4,7 +4,6 @@ const problemRouter=express.Router();
 const adminMiddleware=require('../middleware/adminMiddleware');
 const userMiddleware=require('../middleware/userMiddleware');
 const {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,submittedProblem} = require("../controllers/userProblem");
-const { getLanguageById } = require('../utils/problemUtility');
 
 
 problemRouter.post("/create",adminMiddleware,createProblem);

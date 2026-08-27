@@ -46,7 +46,7 @@ const login = async (req, res) => {
         if (!match)
             throw new Error("Invalid credentials");
 
-        const token = jwt.sign({ _id: user._id, emailId: emailId }, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
+        const token = jwt.sign({ _id: user._id, emailId: user.emailId, role: user.role }, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
         res.cookie('token', token, { maxAge: 60 * 60 * 1000 });
 
         res.status(201).send("User login Successfully");
