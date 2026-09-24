@@ -8,10 +8,5 @@ const validate=(data)=>{
     if(!IsAllowed)
         throw new Error ("some field Missing");
 
-    if(!validator.isEmail(data.emailId))
-        throw new Error("Invalid Email");
-
-    if(!validator.isStrongPassword(data.password))
-        throw new Error("Weak Password");
 }
 module.exports=validate;

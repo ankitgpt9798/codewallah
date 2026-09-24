@@ -3,31 +3,57 @@ const validate = require('../utils/validator');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const redisClient = require('../config/redis');
+const { signupSchema } = require("../utils/validation");
 
 
 
 const register = async (req, res) => {
-    // validate the user
     try {
-        validate(req.body);
 
-        const { firstName, emailId, password } = req.body;
+        const result = signupSchema.safeParse(req.body);
 
-        const hashedPass = await bcrypt.hash(password, 10);
+        if (!result.success) {
+            return res.status(400).json({
+                message: result.error.issues[0].message
+            });
+        }
 
-        const user = await User.create({ firstName, emailId, password: hashedPass });
+        const { firstName, emailId, password } = result.data;
 
-        const token = jwt.sign({ _id: user._id, emailId: emailId }, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
-        res.cookie('token', token, { maxAge: 60 * 60 * 1000 });
+        const existingUser = await User.findOne({ emailId });
 
-        res.status(201).send("User Registered Successfully");
+        if (existingUser) {
+            return res.status(400).json({
+                message: "User already exists"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            firstName,
+            emailId,
+            password: hashedPassword
+        });
+
+        return res.status(201).json({
+            message: "User registered successfully",
+            user: {
+                _id: user._id,
+                firstName: user.firstName,
+                emailId: user.emailId
+            }
+        });
+
+    } catch (err) {
+
+        console.error("REGISTER ERROR:", err);
+
+        return res.status(500).json({
+            message: err.message
+        });
     }
-
-    catch (err) {
-        res.status(400).send(err.message);
-    }
-}
-
+};
 // login
 const login = async (req, res) => {
 
@@ -40,16 +66,28 @@ const login = async (req, res) => {
             throw new Error("Invalid credentials");
 
         const user = await User.findOne({ emailId });
+        if (!user) {
+            throw new Error("Invalid credentials");
+        }
 
         const match = await bcrypt.compare(password, user.password);
 
         if (!match)
             throw new Error("Invalid credentials");
 
+        const reply = {
+            firstName: user.firstName,
+            emailId: user.emailId,
+            _id: user._id
+        }
+
         const token = jwt.sign({ _id: user._id, emailId: user.emailId, role: user.role }, process.env.JWT_SECRET_KEY, { expiresIn: 60 * 60 });
         res.cookie('token', token, { maxAge: 60 * 60 * 1000 });
 
-        res.status(201).send("User login Successfully");
+        res.status(201).json({
+            user: reply,
+            message: "Login Sucessfully"
+        })
     }
     catch (err) {
         res.status(400).send("Error" + err);
@@ -97,23 +135,51 @@ const adminRegister = async (req, res) => {
     }
 }
 
-const deleteProfile = async(req,res)=>{
-  
-    try{
-       const userId = req.result._id;
-      
-    // userSchema delete
-    await User.findByIdAndDelete(userId);
-    
-    res.status(200).send("Deleted Successfully");
+const deleteProfile = async (req, res) => {
+
+    try {
+        const userId = req.result._id;
+
+        // userSchema delete
+        await User.findByIdAndDelete(userId);
+
+        res.status(200).send("Deleted Successfully");
 
     }
-    catch(err){
-      
+    catch (err) {
+
         res.status(500).send("Internal Server Error");
     }
 }
 
+const checkAuth = async (req, res) => {
+    try {
+        const user = req.result;
+
+        const reply = {
+            firstName: user.firstName,
+            emailId: user.emailId,
+            _id: user._id
+        };
+
+        res.status(200).json({
+            user: reply
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            message: "Internal Server Error"
+        });
+    }
+};
 
 
-module.exports = { register, login, logout, adminRegister ,deleteProfile};
+
+module.exports = {
+    register,
+    login,
+    logout,
+    adminRegister,
+    deleteProfile,
+    checkAuth
+};
