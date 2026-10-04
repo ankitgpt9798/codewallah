@@ -2,13 +2,15 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
+import AdminPanel from "./pages/AdminPanel";
+import ProblemPage from "./pages/ProblemPage";
 
 import { useDispatch, useSelector } from "react-redux";
 import { checkAuth } from "./authSlice";
 import { useEffect } from "react";
 
 function App() {
-  const { isAuthenticated ,loading} = useSelector((state) => state.auth);
+  const { isAuthenticated,user ,loading} = useSelector((state) => state.auth);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -43,6 +45,13 @@ function App() {
           isAuthenticated ? <Navigate to="/" /> : <Signup />
         }
       />
+       <Route
+  path="/AdminPanel"
+  element={
+    isAuthenticated ? <AdminPanel /> : <Navigate to="/login" />
+  }
+/>
+<Route path="/problem/:problemId" element={<ProblemPage/>}></Route>
     </Routes>
   );
 }

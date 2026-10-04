@@ -36,6 +36,25 @@ const register = async (req, res) => {
             password: hashedPassword
         });
 
+        // Create JWT token after registration
+        const token = jwt.sign(
+            {
+                _id: user._id,
+                emailId: user.emailId,
+                role: user.role
+            },
+            process.env.JWT_SECRET_KEY,
+            {
+                expiresIn: 60 * 60
+            }
+        );
+
+        // Store token in cookie
+        res.cookie('token', token, {
+            maxAge: 60 * 60 * 1000,
+            httpOnly: true
+        });
+
         return res.status(201).json({
             message: "User registered successfully",
             user: {
