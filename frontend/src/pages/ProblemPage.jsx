@@ -35,24 +35,9 @@ const ProblemPage = () => {
           `/problem/getproblemById/${problemId}`,
         );
         const initialCode =
-          response.data.startCode.find((sc) => {
-            if (sc.language === "C++" && selectedLanguage === "cpp") {
-              return true;
-            }
-
-            if (sc.language === "Java" && selectedLanguage === "java") {
-              return true;
-            }
-
-            if (
-              sc.language === "Javascript" &&
-              selectedLanguage === "javascript"
-            ) {
-              return true;
-            }
-
-            return false;
-          })?.initialCode || "";
+          response.data.startCode.find(
+            (sc) => sc.language?.toLowerCase() === langMap[selectedLanguage].toLowerCase(),
+          )?.initialCode || "";
 
         console.log("Initial code:", initialCode);
         console.log("Start code:", response.data.startCode);
@@ -75,7 +60,7 @@ const ProblemPage = () => {
     if (problem) {
       const initialCode =
         problem.startCode.find(
-          (sc) => sc.language === langMap[selectedLanguage],
+          (sc) => sc.language?.toLowerCase() === langMap[selectedLanguage].toLowerCase(),
         )?.initialCode || "";
       console.log(
         "Selected language:",
