@@ -20,12 +20,14 @@ const adminMiddleware = async (req,res,next)=>{
 
         const result = await User.findById(_id);
 
-        if(payload.role!='admin')
-            throw new Error("Invalid Token");
-
         if(!result){
             throw new Error("User Doesn't Exist");
         }
+
+        // Check the role stored in the DB, not the one baked into the token,
+        // so a role change takes effect without logging in again
+        if(result.role!='admin')
+            throw new Error("Admin access required");
 
         // Redis ke blockList mein persent toh nahi hai
 

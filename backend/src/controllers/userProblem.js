@@ -3,18 +3,33 @@ const { getLanguageById, submitBatch, submitToken } = require("../utils/problemU
 const Problem = require('../models/problem');
 const Submission = require('../models/submission');
 
+// Builds a readable message from a failed Judge0 result
+const judgeErrorMessage = (language, test) => {
+    const parts = [`Reference solution (${language}) failed: ${test.status?.description || 'Unknown status'}`];
+    if (test.compile_output) parts.push(`Compile output: ${test.compile_output}`);
+    if (test.stderr) parts.push(`Stderr: ${test.stderr}`);
+    if (test.status_id == 4) {
+        parts.push(`Input: ${test.stdin}`);
+        parts.push(`Expected: ${test.expected_output}`);
+        parts.push(`Got: ${test.stdout}`);
+    }
+    return parts.join('\n');
+}
+
 const createProblem = async (req, res) => {
-    console.log("Inside Create Problem");
-    const { title, description, difficulty, tags,
-        visibleTestCases, hiddenTestCases, startCode,
-        referenceSolution, problemCreator
-    } = req.body;
-    
+    const { visibleTestCases, referenceSolution } = req.body;
+
     try {
+        if (!Array.isArray(referenceSolution) || referenceSolution.length === 0)
+            return res.status(400).json({ message: "Reference solution is required" });
+        if (!Array.isArray(visibleTestCases) || visibleTestCases.length === 0)
+            return res.status(400).json({ message: "At least one visible test case is required" });
 
         for (const { language, completeCode } of referenceSolution) {
-            
+
             const languageId = getLanguageById(language);
+            if (!languageId)
+                return res.status(400).json({ message: `Unsupported language: ${language}` });
 
             const submissions = visibleTestCases.map((testcase) => ({
                 source_code: completeCode,
@@ -22,32 +37,38 @@ const createProblem = async (req, res) => {
                 stdin: testcase.input,
                 expected_output: testcase.output
             }));
-        
+
             const submitResult = await submitBatch(submissions);
-            
+
             const resultToken = submitResult.map((value) => value.token);
-            
+
             const testResult = await submitToken(resultToken);
-            
+
             for (const test of testResult) {
                 if (test.status_id != 3) {
-                    return res.status(400).send(test);
+                    return res.status(400).json({
+                        message: judgeErrorMessage(language, test),
+                        result: test
+                    });
                 }
             }
 
         }
-        
+
         // We can store it in our DB
-        const userProblem = await Problem.create({
+        await Problem.create({
             ...req.body,
             problemCreator: req.result._id
         });
-        
-        res.status(201).send("Problem Saved Successfully");
+
+        res.status(201).json({ message: "Problem Saved Successfully" });
 
     }
     catch (err) {
-        res.status(400).send("Error: " + err);
+        console.error("CREATE PROBLEM ERROR:", err);
+        // Judge0 request failures carry the reason in err.response.data
+        const judgeError = err.response?.data ? ` (Judge0: ${JSON.stringify(err.response.data)})` : '';
+        res.status(400).json({ message: "Error: " + err.message + judgeError });
     }
 }
 
