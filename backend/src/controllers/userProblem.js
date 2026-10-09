@@ -1,5 +1,5 @@
 
-const { getLanguageById, submitBatch, submitToken } = require("../utils/problemUtility");
+const { getLanguageById, submitBatch, submitToken, getDriverCode, buildSource, USER_CODE_PLACEHOLDER } = require("../utils/problemUtility");
 const Problem = require('../models/problem');
 const Submission = require('../models/submission');
 
@@ -16,44 +16,61 @@ const judgeErrorMessage = (language, test) => {
     return parts.join('\n');
 }
 
-const createProblem = async (req, res) => {
-    const { visibleTestCases, referenceSolution } = req.body;
+// Runs every reference solution (wrapped in its driver code) on the visible test cases.
+// Returns null when all pass, otherwise { status, body } describing the failure.
+const validateProblem = async ({ visibleTestCases, referenceSolution, driverCode }) => {
+    if (!Array.isArray(referenceSolution) || referenceSolution.length === 0)
+        return { status: 400, body: { message: "Reference solution is required" } };
+    if (!Array.isArray(visibleTestCases) || visibleTestCases.length === 0)
+        return { status: 400, body: { message: "At least one visible test case is required" } };
 
-    try {
-        if (!Array.isArray(referenceSolution) || referenceSolution.length === 0)
-            return res.status(400).json({ message: "Reference solution is required" });
-        if (!Array.isArray(visibleTestCases) || visibleTestCases.length === 0)
-            return res.status(400).json({ message: "At least one visible test case is required" });
+    for (const driver of driverCode || []) {
+        if (driver.code && !driver.code.includes(USER_CODE_PLACEHOLDER))
+            return { status: 400, body: { message: `Driver code (${driver.language}) must contain ${USER_CODE_PLACEHOLDER} where the user's code goes` } };
+    }
 
-        for (const { language, completeCode } of referenceSolution) {
+    for (const { language, completeCode } of referenceSolution) {
 
-            const languageId = getLanguageById(language);
-            if (!languageId)
-                return res.status(400).json({ message: `Unsupported language: ${language}` });
+        const languageId = getLanguageById(language);
+        if (!languageId)
+            return { status: 400, body: { message: `Unsupported language: ${language}` } };
 
-            const submissions = visibleTestCases.map((testcase) => ({
-                source_code: completeCode,
-                language_id: languageId,
-                stdin: testcase.input,
-                expected_output: testcase.output
-            }));
+        const sourceCode = buildSource(completeCode, getDriverCode({ driverCode }, language));
 
-            const submitResult = await submitBatch(submissions);
+        const submissions = visibleTestCases.map((testcase) => ({
+            source_code: sourceCode,
+            language_id: languageId,
+            stdin: testcase.input,
+            expected_output: testcase.output
+        }));
 
-            const resultToken = submitResult.map((value) => value.token);
+        const submitResult = await submitBatch(submissions);
 
-            const testResult = await submitToken(resultToken);
+        const resultToken = submitResult.map((value) => value.token);
 
-            for (const test of testResult) {
-                if (test.status_id != 3) {
-                    return res.status(400).json({
-                        message: judgeErrorMessage(language, test),
-                        result: test
-                    });
-                }
+        const testResult = await submitToken(resultToken);
+
+        for (const test of testResult) {
+            if (test.status_id != 3) {
+                const { source_code, ...result } = test;
+                return { status: 400, body: { message: judgeErrorMessage(language, test), result } };
             }
-
         }
+    }
+    return null;
+}
+
+// Judge0 request failures carry the reason in err.response.data
+const serverErrorMessage = (err) => {
+    const judgeError = err.response?.data ? ` (Judge0: ${JSON.stringify(err.response.data)})` : '';
+    return "Error: " + err.message + judgeError;
+}
+
+const createProblem = async (req, res) => {
+    try {
+        const failure = await validateProblem(req.body);
+        if (failure)
+            return res.status(failure.status).json(failure.body);
 
         // We can store it in our DB
         await Problem.create({
@@ -66,55 +83,33 @@ const createProblem = async (req, res) => {
     }
     catch (err) {
         console.error("CREATE PROBLEM ERROR:", err);
-        // Judge0 request failures carry the reason in err.response.data
-        const judgeError = err.response?.data ? ` (Judge0: ${JSON.stringify(err.response.data)})` : '';
-        res.status(400).json({ message: "Error: " + err.message + judgeError });
+        res.status(400).json({ message: serverErrorMessage(err) });
     }
 }
 
 const updateProblem = async (req, res) => {
     const { id } = req.params;
-    const { title, description, difficulty, tags,
-        visibleTestCases, hiddenTestCases, startCode,
-        referenceSolution, problemCreator
-    } = req.body;
 
     try {
         if (!id) {
-            return res.status(400).send("Missing Id Field");
+            return res.status(400).json({ message: "Missing Id Field" });
         }
         const DsaProblem = await Problem.findById(id);
         if (!DsaProblem) {
-            return res.status(404).send("Id is not present in server");
+            return res.status(404).json({ message: "Id is not present in server" });
         }
 
-        for (const { language, completeCode } of referenceSolution) {
+        const failure = await validateProblem(req.body);
+        if (failure)
+            return res.status(failure.status).json(failure.body);
 
-            const languageId = await getLanguageById(language);
-
-            const submission = visibleTestCases.map((testcase) => ({
-                source_code: completeCode,
-                language_id: languageId,
-                stdin: testcase.input,
-                expected_output: testcase.output
-
-            }))
-
-            const submitResult = await submitBatch(submission);
-            const resultToken = submitResult.map((value) => value.token);
-            const testResult = await submitToken(resultToken);
-            for (const test of testResult) {
-                if (test.status_id != 3) {
-                    return res.status(400).send("Error Occured");
-                }
-            }
-        }
         const newProblem = await Problem.findByIdAndUpdate(id, { ...req.body }, { runValidators: true, new: true });
 
         res.status(200).send(newProblem);
     }
     catch (err) {
-        res.status(500).send("Error: " + err);
+        console.error("UPDATE PROBLEM ERROR:", err);
+        res.status(500).json({ message: serverErrorMessage(err) });
     }
 
 }
@@ -147,7 +142,8 @@ const getProblemById = async(req,res)=>{
     if(!id)
       return res.status(400).send("ID is Missing");
 
-    const getProblem = await Problem.findById(id);
+    // Hidden test cases and driver code must never reach the browser
+    const getProblem = await Problem.findById(id).select('-hiddenTestCases -driverCode');
 
    if(!getProblem)
     return res.status(404).send("Problem is Missing");
@@ -163,7 +159,7 @@ const getAllProblem = async(req,res)=>{
 
   try{
      
-    const getProblem = await Problem.find({});
+    const getProblem = await Problem.find({}).select('_id title difficulty tags');
 
    if(getProblem.length==0)
     return res.status(404).send("Problem is Missing");

@@ -4,6 +4,9 @@ import { z } from 'zod';
 import axiosClient from '../utils/axiosClient';
 import { useNavigate } from 'react-router-dom';
 
+// Marks where the user's code is inserted into the hidden driver code
+const USER_CODE_PLACEHOLDER = '{{USER_CODE}}';
+
 // Zod schema matching the problem schema
 const problemSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -34,7 +37,17 @@ const problemSchema = z.object({
       language: z.enum(['C++', 'Java', 'JavaScript']),
       completeCode: z.string().min(1, 'Complete code is required')
     })
-  ).length(3, 'All three languages required')
+  ).length(3, 'All three languages required'),
+  // Optional hidden wrapper (includes, main, input/output) around the user's code
+  driverCode: z.array(
+    z.object({
+      language: z.enum(['C++', 'Java', 'JavaScript']),
+      code: z.string().refine(
+        (code) => !code.trim() || code.includes(USER_CODE_PLACEHOLDER),
+        `Driver code must contain ${USER_CODE_PLACEHOLDER} where the user's code goes`
+      )
+    })
+  )
 });
 
 function AdminPanel() {
@@ -62,6 +75,11 @@ function AdminPanel() {
         { language: 'C++', completeCode: '' },
         { language: 'Java', completeCode: '' },
         { language: 'JavaScript', completeCode: '' }
+      ],
+      driverCode: [
+        { language: 'C++', code: '' },
+        { language: 'Java', code: '' },
+        { language: 'JavaScript', code: '' }
       ]
     }
   });
@@ -86,7 +104,9 @@ function AdminPanel() {
 
   const onSubmit = async (data) => {
     try {
-      await axiosClient.post('/problem/create', data);
+      // Languages left without driver code run the user's code as a complete program
+      const driverCode = data.driverCode.filter((d) => d.code.trim());
+      await axiosClient.post('/problem/create', { ...data, driverCode });
       alert('Problem created successfully!');
       navigate('/');
     } catch (error) {
@@ -324,6 +344,23 @@ function AdminPanel() {
                   </pre>
                   {errors.referenceSolution?.[index]?.completeCode && (
                     <span className="text-error">{errors.referenceSolution[index].completeCode.message}</span>
+                  )}
+                </div>
+
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Driver Code (hidden from users, optional)</span>
+                  </label>
+                  <pre className="bg-base-300 p-4 rounded-lg">
+                    <textarea
+                      {...register(`driverCode.${index}.code`)}
+                      className="w-full bg-transparent font-mono"
+                      rows={8}
+                      placeholder={`Includes, main(), input reading and output printing.\nPut ${USER_CODE_PLACEHOLDER} where the user's code goes.\nLeave empty if Initial Code is a complete program.`}
+                    />
+                  </pre>
+                  {errors.driverCode?.[index]?.code && (
+                    <span className="text-error">{errors.driverCode[index].code.message}</span>
                   )}
                 </div>
               </div>

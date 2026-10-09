@@ -76,6 +76,20 @@ const problemSchema = new Schema({
         }
     ],
 
+    // Hidden from users: wraps their code into a full program before it runs
+    driverCode: [
+        {
+            language:{
+                type:String,
+                required:true,
+            },
+            code:{
+                type:String,
+                required:true
+            }
+        }
+    ],
+
     problemCreator:{
         type: Schema.Types.ObjectId,
         ref:'user',

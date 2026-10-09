@@ -1,7 +1,7 @@
 const Problem = require("../models/problem");
 const Submission = require("../models/submission");
 const User = require("../models/user");
-const {getLanguageById,submitBatch,submitToken} = require("../utils/problemUtility");
+const {getLanguageById,submitBatch,submitToken,getDriverCode,buildSource} = require("../utils/problemUtility");
 
 const submitCode = async (req, res) => {
 
@@ -58,9 +58,12 @@ const submitCode = async (req, res) => {
         }
 
 
+        // Wrap the user's function in the problem's hidden driver code
+        const sourceCode = buildSource(code, getDriverCode(problem, judgeLanguage));
+
         // Prepare hidden test cases
         const submissions = problem.hiddenTestCases.map((testcase) => ({
-            source_code: code,
+            source_code: sourceCode,
             language_id: languageId,
             stdin: testcase.input,
             expected_output: testcase.output
@@ -217,8 +220,11 @@ const runCode = async(req,res)=>{
 
    const languageId = getLanguageById(language);
 
+   // Wrap the user's function in the problem's hidden driver code
+   const sourceCode = buildSource(code, getDriverCode(problem, language));
+
    const submissions = problem.visibleTestCases.map((testcase)=>({
-       source_code:code,
+       source_code:sourceCode,
        language_id: languageId,
        stdin: testcase.input,
        expected_output: testcase.output
@@ -258,7 +264,8 @@ const runCode = async(req,res)=>{
   
    res.status(201).json({
     success:status,
-    testCases: testResult,
+    // Leave out source_code so the hidden driver code is not sent to the browser
+    testCases: testResult.map(({ source_code, ...test }) => test),
     runtime,
     memory
    });
