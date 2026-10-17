@@ -3,7 +3,7 @@ const problemRouter=express.Router();
 
 const adminMiddleware=require('../middleware/adminMiddleware');
 const userMiddleware=require('../middleware/userMiddleware');
-const {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,submittedProblem} = require("../controllers/userProblem");
+const {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,submittedProblem,problemSolvedByUser} = require("../controllers/userProblem");
 
 
 problemRouter.post("/create",adminMiddleware,createProblem);
@@ -12,6 +12,7 @@ problemRouter.delete("/delete/:id",adminMiddleware,deleteProblem);
 problemRouter.get("/getproblemById/:id",userMiddleware,getProblemById);
 problemRouter.get("/getAllProblem",userMiddleware,getAllProblem);
 problemRouter.get("/submittedProblem/:pid",userMiddleware,submittedProblem);
+problemRouter.get("/problemSolvedByUser",userMiddleware,problemSolvedByUser);
 
 
 module.exports=problemRouter;

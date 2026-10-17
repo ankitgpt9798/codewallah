@@ -192,6 +192,23 @@ const submittedProblem = async(req,res)=>{
   }
 }
 
+// Problems the logged-in user has solved, with the same fields as getAllProblem
+const problemSolvedByUser = async(req,res)=>{
+
+  try{
+
+    const user = await req.result.populate({
+      path: "problemSolved",
+      select: "_id title difficulty tags"
+    });
+
+    res.status(200).send(user.problemSolved);
+  }
+  catch(err){
+    res.status(500).send("Error: "+err);
+  }
+}
 
 
-module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,submittedProblem};
+
+module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,submittedProblem,problemSolvedByUser};
