@@ -12,15 +12,41 @@ const langMap = {
   javascript: "Javascript",
 };
 
+const getStarterCode = (problem, lang) =>
+  problem.startCode.find(
+    (sc) => sc.language?.toLowerCase() === langMap[lang].toLowerCase(),
+  )?.initialCode || "";
+
+// Code is saved per problem + language so it survives language switches and refreshes
+const storageKey = (problemId, lang) => `code:${problemId}:${lang}`;
+
+const loadSavedCode = (problemId, lang) => {
+  try {
+    return localStorage.getItem(storageKey(problemId, lang));
+  } catch {
+    return null;
+  }
+};
+
+const saveCode = (problemId, lang, code) => {
+  try {
+    localStorage.setItem(storageKey(problemId, lang), code);
+  } catch {
+    // Storage full or blocked: code still lives in state for this session
+  }
+};
+
 const ProblemPage = () => {
   const [problem, setProblem] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState("javascript");
-  const [code, setCode] = useState("");
+  const [codeByLang, setCodeByLang] = useState({});
   const [loading, setLoading] = useState(false);
   const [runResult, setRunResult] = useState(null);
   const [submitResult, setSubmitResult] = useState(null);
   const [activeLeftTab, setActiveLeftTab] = useState("description");
   const [activeRightTab, setActiveRightTab] = useState("code");
+
+  const code = codeByLang[selectedLanguage] ?? "";
 
   const editorRef = useRef(null);
 
@@ -35,16 +61,15 @@ const ProblemPage = () => {
         const response = await axiosClient.get(
           `/problem/getproblemById/${problemId}`,
         );
-        const initialCode =
-          response.data.startCode.find(
-            (sc) => sc.language?.toLowerCase() === langMap[selectedLanguage].toLowerCase(),
-          )?.initialCode || "";
-
-        console.log("Initial code:", initialCode);
-        console.log("Start code:", response.data.startCode);
+        // Saved code wins over starter code for each language
+        const initialCode = {};
+        for (const lang of Object.keys(langMap)) {
+          initialCode[lang] =
+            loadSavedCode(problemId, lang) || getStarterCode(response.data, lang);
+        }
 
         setProblem(response.data);
-        setCode(initialCode);
+        setCodeByLang(initialCode);
 
         setLoading(false);
       } catch (error) {
@@ -56,27 +81,12 @@ const ProblemPage = () => {
 
     fetchProblem();
   }, [problemId]);
-  // Update code when language changes
-  useEffect(() => {
-    if (problem) {
-      const initialCode =
-        problem.startCode.find(
-          (sc) => sc.language?.toLowerCase() === langMap[selectedLanguage].toLowerCase(),
-        )?.initialCode || "";
-      console.log(
-        "Selected language:",
-        selectedLanguage,
-        "Initial code:",
-        initialCode,
-      );
 
-      setCode(initialCode);
-    }
-  }, [selectedLanguage, problem]);
-
-  // Editor change
+  // Editor change: only updates the code of the selected language
   const handleEditorChange = (value) => {
-    setCode(value || "");
+    const newCode = value || "";
+    setCodeByLang((prev) => ({ ...prev, [selectedLanguage]: newCode }));
+    saveCode(problemId, selectedLanguage, newCode);
   };
   // Monaco editor mount
   const handleEditorDidMount = (editor) => {
@@ -330,14 +340,13 @@ const ProblemPage = () => {
                   </div>
                 </div>
               )}
-              {activeLeftTab === 'chatAI' && (
-                <div className="max-w-none">
-                  <h2 className="text-xl font-bold mb-4">CHAT with AI</h2>
-                  <div className="text-sm leading-relaxed">
-                    <ChatAi problem={problem}></ChatAi>
-                  </div>
+              {/* Kept mounted (only hidden) so chat history survives tab switches */}
+              <div className={activeLeftTab === "chatAI" ? "max-w-none" : "hidden"}>
+                <h2 className="text-xl font-bold mb-4">CHAT with AI</h2>
+                <div className="text-sm leading-relaxed">
+                  <ChatAi key={problemId} problem={problem}></ChatAi>
                 </div>
-              )}
+              </div>
             </>
           )}
         </div>
@@ -401,7 +410,9 @@ const ProblemPage = () => {
               {/* Monaco Editor */}
 
               <div className="flex-1">
+                {/* key: fresh editor per language so undo can't bring back another language's code */}
                 <Editor
+                  key={selectedLanguage}
                   height="100%"
                   language={getLanguageForMonaco(selectedLanguage)}
                   value={code}

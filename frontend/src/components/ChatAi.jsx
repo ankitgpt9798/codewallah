@@ -9,8 +9,7 @@ import "highlight.js/styles/github-dark.css";
 
 function ChatAi({problem}) {
     const [messages, setMessages] = useState([
-        { role: 'model', parts:[{text: "Hi, How are you"}]},
-        { role: 'user', parts:[{text: "I am Good"}]}
+        { role: 'model', parts:[{text: "Hi! I can help with hints, debugging, or explaining this problem. What would you like to know?"}]}
     ]);
 
     const { register, handleSubmit, reset,formState: {errors} } = useForm();
