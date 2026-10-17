@@ -27,9 +27,6 @@ const submitCode = async (req, res) => {
             judgeLanguage = 'c++';
         }
 
-        console.log("Submission language:", submissionLanguage);
-        console.log("Judge0 language:", judgeLanguage);
-
 
         // Fetch problem
         const problem = await Problem.findById(problemId);
