@@ -166,7 +166,7 @@ const deleteProfile = async (req, res) => {
         res.status(200).send("Deleted Successfully");
 
     }
-    catch (err) {
+    catch {
 
         res.status(500).send("Internal Server Error");
     }
@@ -187,7 +187,7 @@ const checkAuth = async (req, res) => {
             user: reply
         });
 
-    } catch (err) {
+    } catch {
         res.status(500).json({
             message: "Internal Server Error"
         });

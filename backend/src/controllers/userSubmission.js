@@ -1,6 +1,5 @@
 const Problem = require("../models/problem");
 const Submission = require("../models/submission");
-const User = require("../models/user");
 const {getLanguageById,submitBatch,submitToken,getDriverCode,buildSource} = require("../utils/problemUtility");
 
 const submitCode = async (req, res) => {
@@ -234,26 +233,17 @@ const runCode = async(req,res)=>{
 
    const testResult = await submitToken(resultToken);
 
-    let testCasesPassed = 0;
     let runtime = 0;
     let memory = 0;
     let status = true;
-    let errorMessage = null;
 
+    // Each test's stderr already goes back in testCases, so only the totals are tracked here
     for(const test of testResult){
         if(test.status_id==3){
-           testCasesPassed++;
            runtime = runtime+parseFloat(test.time)
            memory = Math.max(memory,test.memory);
         }else{
-          if(test.status_id==4){
-            status = false
-            errorMessage = test.stderr
-          }
-          else{
-            status = false
-            errorMessage = test.stderr
-          }
+           status = false
         }
     }
 

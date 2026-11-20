@@ -14,6 +14,11 @@ export default defineConfig([
             sourceType: 'commonjs',
             globals: globals.node,
         },
+        rules: {
+            // `const { source_code, ...rest } = test` is how we strip the hidden
+            // driver code from Judge0 results; the dropped key is intentional.
+            'no-unused-vars': ['error', { ignoreRestSiblings: true }],
+        },
     },
 
     {
